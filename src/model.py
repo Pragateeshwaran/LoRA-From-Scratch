@@ -1,5 +1,3 @@
-# model.py
-
 import torch
 import torch.nn as nn
 import torch.nn.utils.parametrize as parametrize
@@ -11,9 +9,9 @@ class SimpleNN(nn.Module):
     """
     def __init__(self):
         super(SimpleNN, self).__init__()
-        self.layer1 = nn.Linear(28 * 28, 256)
-        self.layer2 = nn.Linear(256, 128)
-        self.layer3 = nn.Linear(128, 10)
+        self.layer1 = nn.Linear(28 * 28, 10000)
+        self.layer2 = nn.Linear(10000, 10000)
+        self.layer3 = nn.Linear(10000, 10)
         self.relu = nn.ReLU()
 
     def forward(self, x):
