@@ -1,5 +1,3 @@
-# main.py
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -39,7 +37,7 @@ def Prepare_Data(batch_size_train=64, batch_size_test=1024, fine_tune_digit=None
     """
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))  # Normalize with MNIST mean and std
+        transforms.Normalize((0.1307,), (0.3081,))   
     ])
     
     # Training dataset and loader
