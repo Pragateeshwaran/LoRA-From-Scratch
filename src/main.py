@@ -89,13 +89,12 @@ def train(model, device, train_loader, optimizer, criterion, epoch):
         loss.backward()                
         optimizer.step()                 
         running_loss += loss.item()
-        
-        # Count correct predictions
+ 
         _, predicted = torch.max(outputs.data, 1)
         total += target.size(0)
         correct += (predicted == target).sum().item()
         
-        if (batch_idx + 1) % 100 == 0:  # Print every 100 batches
+        if (batch_idx + 1) % 100 == 0:   
             print(f'Epoch [{epoch}/100], Step [{batch_idx + 1}/{len(train_loader)}], '
                   f'Loss: {running_loss / (batch_idx + 1):.4f}, '
                   f'Accuracy: {100 * correct / total:.2f}%, '
@@ -154,14 +153,11 @@ def test(model, device, test_loader, criterion, class_names):
     print("\n")
     return accuracy
 
-def main():
-    # Initialize the model
+def main(): 
     model = SimpleNN().to(device)
-    
-    # Apply LoRA parametrization
+     
     apply_lora(model, rank=4, lora_alpha=2)
-    
-    # Display parameter counts
+     
     total_parameters_lora = 0
     total_parameters_non_lora = 0
     for index, layer in enumerate([model.layer1, model.layer2, model.layer3]):
@@ -176,8 +172,7 @@ def main():
     print(f'Parameters introduced by LoRA: {total_parameters_lora:,}')
     parameters_increment = (total_parameters_lora / total_parameters_non_lora) * 100 if total_parameters_non_lora > 0 else 0
     print(f'Parameters increment: {parameters_increment:.3f}%\n')
-    
-    # Freeze non-LoRA parameters
+     
     for name, param in model.named_parameters():
         if 'parametrizations' not in name and 'bias' not in name:
             print(f'Freezing non-LoRA parameter {name}')
