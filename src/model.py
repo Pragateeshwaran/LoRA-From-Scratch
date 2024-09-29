@@ -24,9 +24,9 @@ class SimpleNN(nn.Module):
         Returns:
             torch.Tensor: Output logits.
         """
-        x = x.view(x.size(0), -1)  # Flatten the input
+        x = x.view(x.size(0), -1)  
         x = self.relu(self.layer1(x))
         x = self.relu(self.layer2(x))
-        x = self.layer3(x)  # Output logits (no softmax)
+        x = self.layer3(x)   
         return x
 
