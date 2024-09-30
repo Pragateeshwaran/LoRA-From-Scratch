@@ -1,90 +1,43 @@
-import torch.nn.utils.parametrize as parametrize
 import torch
 import torch.nn as nn
+import torch.nn.utils.parametrize as parametrize
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
-class LoRA_Scratch(nn.Module):
-    """
-    Implements Low-Rank Adaptation (LoRA) for a given linear layer.
-    """
-    def __init__(self, layer, rank, alpha=0.5):
-        super(LoRA_Scratch, self).__init__()
+class LoRA_scratch(nn.Module):
+    def __init__(self, layer, rank, device, alpha=1):
+        super().__init__()
         feature_in, feature_out = layer.weight.shape
+        self.device = device  
+        self.A = nn.Parameter(torch.zeros(feature_in, rank, device=self.device))
+        self.B = nn.Parameter(torch.zeros(rank, feature_out, device=self.device))
 
-        # Initialize A and B with zeros
-        self.A = nn.Parameter(torch.zeros(feature_in, rank).to(device=device))
-        self.B = nn.Parameter(torch.zeros(rank, feature_out).to(device=device))
-        
-        self.scale = alpha / rank
-        self.LoRA = True  # Flag to enable/disable LoRA
+        self.LoRA = True
+        self.scale = torch.tensor(alpha / rank, device=self.device)  # Ensure scale is also on the correct device
 
-    def forward(self, X):
-        """
-        Forward pass with LoRA adaptation.
-
-        Args:
-            X (torch.Tensor): Input tensor.
-
-        Returns:
-            torch.Tensor: Adapted output tensor.
-        """
+    def forward(self, weight):
         if self.LoRA:
-            return X + (self.A @ self.B) * self.scale
-        else:
-            return X
+            # Ensure that the operation is performed on the same device as the weight tensor
+            return weight + (self.A @ self.B).to(self.device) * self.scale.to(self.device)
+        return weight
 
-    def LoRA_convertor(self, layer, rank=4, lora_alpha=2):
-        """
-        Factory function to create a LoRA_Scratch instance for a given layer.
+def linear_layer_parameterization(layer, rank, device):
+    return LoRA_scratch(layer, rank, device, alpha=1)
 
-        Args:
-            layer (nn.Module): The linear layer to apply LoRA to.
-            rank (int): Rank of the low-rank matrices A and B.
-            lora_alpha (float): Scaling factor.
+def apply_LoRA(model, rank, device, enable=True):
+    total_parameters_original = sum(p.numel() for p in model.parameters())
+    print(f'Original number of parameters: {total_parameters_original:,}')
 
-        Returns:
-            LoRA_Scratch: An instance of LoRA_Scratch.
-        """
-        return LoRA_Scratch(layer, rank=rank, alpha=lora_alpha)
+    for name, layer in model.named_modules():
+        if isinstance(layer, nn.Linear):
+            parametrize.register_parametrization(
+                layer, "weight", linear_layer_parameterization(layer, rank, device)
+            )
 
+    if enable:
+        for name, param in model.named_parameters():
+            if 'parametrizations' not in name:
+                param.requires_grad = False
 
-    def apply_lora(self, model, rank=4, lora_alpha=2):
-        """
-        Applies LoRA parametrization to all linear layers in the model.
+    total_parameters_lora = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f'Number of trainable LoRA parameters: {total_parameters_lora:,}')
 
-        Args:
-            model (nn.Module): The neural network model.
-            rank (int): Rank of the LoRA matrices.
-            lora_alpha (float): Scaling factor for LoRA.
-        """
-        for layer in [model.layer1, model.layer2, model.layer3]:
-            parametrize.register_parametrization(layer, "weight", self.LoRA_convertor(layer, rank=rank, lora_alpha=lora_alpha))
-
-    def Enable_lora(self, model, enable=True):
-        """
-        Enables or disables LoRA for all parametrized layers in the model.
-
-        Args:
-            model (nn.Module): The neural network model.
-            enable (bool): Flag to enable or disable LoRA.
-        """
-        for layer in [model.layer1, model.layer2, model.layer3]:
-            lora = layer.parametrizations['weight'][0]
-            lora.LoRA = enable
-            lora.A.requires_grad = enable
-            lora.B.requires_grad = enable
-
-    def Disable_lora(self, model, enable=False):
-        """
-        Disables or enables LoRA for all parametrized layers in the model.
-
-        Args:
-            model (nn.Module): The neural network model.
-            enable (bool): Flag to disable or enable LoRA.
-        """
-        for layer in [model.layer1, model.layer2, model.layer3]:
-            lora = layer.parametrizations['weight'][0]
-            lora.LoRA = not enable
-            lora.A.requires_grad = not enable
-            lora.B.requires_grad = not enable
+    return model
