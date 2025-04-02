@@ -86,5 +86,4 @@ Email: geniuspekka1808@gmail.com
 - LoRA: Low-Rank Adaptation of Large Language Models
 
 ---
-
-Created by Pragateeshwaran
+ 
